@@ -10,8 +10,8 @@ settings:
     port: 8000 # 服务端口号
     readtimeout: 1
     writertimeout: 2
-    # 数据权限功能开关
-    enabledp: false
+    # 数据权限功能开关（mes 模块的 Curd 走 actions.Permission 数据权限，需保持开启）
+    enabledp: true
   logger:
     # 日志存放路径
     path: temp/logs
@@ -59,6 +59,33 @@ settings:
   extend: # 扩展项使用说明
     demo:
       name: data
+    # MQTT broker 连接，go-admin mqtt 命令（app/mes/service/iot_mqtt.go）使用。
+    # TODO: 填入实际连接信息——旧项目的 settings.dev.yml 未随迁移带入。
+    mqtt:
+      host: '<TODO: mqtt host>'
+      port: 1883
+      username: '<TODO: mqtt username>'
+      password: '<TODO: mqtt password>'
+      clientid: 'go-admin-mqtt'
+    # API 进程 -> mqtt 进程 的 gRPC 通知链路（配置变更通知设备）。
+    # client 为 true 时 app/mes/service/prc.go 才会真正发起通知。
+    rpc:
+      client: false
+      address: 'unix:./mqtt_server.sock'
+    # 告警：common/alert，运行时按级别推送到飞书/钉钉 webhook。
+    # 两个平台都默认关闭，需要时填 webhook 并打开 enabled。
+    alert:
+      enabled: true
+      environment: dev
+      serviceName: dvb
+      feishu:
+        enabled: false
+        webhook: ""
+        secret: ""
+      dingtalk:
+        enabled: false
+        webhook: ""
+        secret: ""
     # rateLimit 全局入站限流。不配置时为 200 QPS，与此前写死在
     # common/middleware/sentinel.go 里的值一致，升级不会改变行为。
     # 填 0 关闭限流——部署在自带限流的网关后面时用得上。
@@ -124,5 +151,3 @@ settings:
 #      group: go-admin          # 消费组，同一应用的多个实例必须用同一个值
 #      key_prefix: go-admin     # 加在 stream key 前面，多个应用共用一个 redis 时用于隔离
 #      max_attempts: 5          # 消息投递失败的最大重试次数
-  locker:
-    redis:

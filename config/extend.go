@@ -19,6 +19,9 @@ type Extend struct {
 	FileStore FileStore
 	RateLimit RateLimit
 	Shutdown  Shutdown
+	Mqtt      Mqtt  // MQTT broker 连接（app/mes 的 cmd mqtt 进程使用）
+	RPC       RPC   // API 进程 -> mqtt 进程 的 gRPC 配置变更通知链路
+	Alert     Alert // 告警配置（飞书/钉钉 webhook）
 }
 
 // DefaultInboundQPS is the limit applied when nothing is configured. It is the
@@ -55,6 +58,71 @@ func (r RateLimit) Threshold() float64 {
 
 type AMap struct {
 	Key string
+}
+
+// Mqtt MQTT broker 连接，app/mes/service/iot_mqtt.go 的 Consumer 使用。
+//
+//	extend:
+//	  mqtt:
+//	    host: 127.0.0.1
+//	    port: 1883
+//	    username: xxx
+//	    password: xxx
+//	    clientid: go-admin-mqtt
+type Mqtt struct {
+	Host     string
+	Port     int
+	Username string
+	Password string
+	ClientId string
+}
+
+// RPC API 进程通过 unix socket + gRPC 通知 mqtt 进程「设备配置已变更」的链路。
+//
+//	extend:
+//	  rpc:
+//	    client: false
+//	    address: "unix:./mqtt_server.sock"
+type RPC struct {
+	Client  bool
+	Address string
+}
+
+// Alert 告警配置，common/alert 使用。
+//
+//	extend:
+//	  alert:
+//	    enabled: true
+//	    environment: dev
+//	    serviceName: go-admin
+//	    feishu:
+//	      enabled: false
+//	      webhook: ""
+//	      secret: ""
+//	    dingtalk:
+//	      enabled: false
+//	      webhook: ""
+//	      secret: ""
+type Alert struct {
+	Enabled     bool     `yaml:"enabled"`
+	Environment string   `yaml:"environment"`
+	ServiceName string   `yaml:"serviceName"`
+	Feishu      Feishu   `yaml:"feishu"`
+	DingTalk    DingTalk `yaml:"dingtalk"`
+}
+
+// Feishu 飞书配置
+type Feishu struct {
+	Enabled bool   `yaml:"enabled"`
+	Webhook string `yaml:"webhook"`
+	Secret  string `yaml:"secret"`
+}
+
+// DingTalk 钉钉配置
+type DingTalk struct {
+	Enabled bool   `yaml:"enabled"`
+	Webhook string `yaml:"webhook"`
+	Secret  string `yaml:"secret"`
 }
 
 // FileStore 对象存储。上传接口的 source 参数决定走哪一家：2 是阿里云，3 是七牛。
