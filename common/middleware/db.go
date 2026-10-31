@@ -8,7 +8,17 @@ import (
 	"github.com/go-admin-team/go-admin-core/v2/sdk"
 )
 
+// TenantDb 由宿主应用（mes-iot-api）在启动时注入，接管数据库中间件的
+// 租户解析（token claim > X-Tenant 头 > Host，实现见 mes/middleware 包）。
+// 本框架只保留这个接缝，保持与上游最小差异；为 nil 时行为与上游一致——
+// 按请求 Host 查库（通配 "*" 由 runtime 短路）。
+var TenantDb func(c *gin.Context)
+
 func WithContextDb(c *gin.Context) {
+	if TenantDb != nil {
+		TenantDb(c)
+		return
+	}
 	db := sdk.Runtime.GetDbByTenant(c.Request.Host)
 	if db == nil {
 		// 数据库是按 host 分租户注册的。取不到只有两种可能：
