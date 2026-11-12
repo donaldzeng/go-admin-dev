@@ -171,7 +171,18 @@ func SetDBOperLog(c *gin.Context, clientIP string, statusCode int, reqUri string
 
 	log := api.GetRequestLogger(c)
 	l := operaLogFields(c, clientIP, statusCode, reqUri, reqMethod, latencyTime, body, result, status)
-	q := sdk.Runtime.GetQueuePrefix(c.Request.Host)
+	// 队列消息的 prefix 就是消费端 SaveOperaLog 取库的租户键
+	//（sdk.Runtime.GetDbByTenant(prefix)）。用请求实际选中的租户键——
+	// 租户中间件（mes/middleware.TenantDb）解析成功后写进 c 里的
+	// "tenantKey"——保证日志落进 handler 用的同一个库。设备链路（MQTT
+	// 网关回环请求）的 Host 是本机地址（如 0.0.0.0:8080），不在 dbs
+	// 注册表里，按 Host 取库必空并刷 "db not exist"。无租户键的请求
+	// （未接管/解析失败的路径）回落 Host，保持原有行为。
+	tenant := c.GetString("tenantKey")
+	if tenant == "" {
+		tenant = c.Request.Host
+	}
+	q := sdk.Runtime.GetQueuePrefix(tenant)
 	message, err := sdk.Runtime.GetStreamMessage("", global.OperateLog, l)
 	if err != nil {
 		log.Errorf("GetStreamMessage error, %s", err.Error())
